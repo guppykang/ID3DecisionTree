@@ -6,6 +6,14 @@ class Node:
         self.l = None
         self.r = None
         self.v = val
+        self.isLeaf = False
+        self.label = None
+    
+    def addLeft(self, data):
+        self.l = Node(data)
+
+    def addRight(self, data):
+        self.r = Node(data)
 
 class Tree:
     def __init__(self, root=None):
@@ -56,9 +64,10 @@ class Tree:
 
     def _printTree(self, node):
         if(node != None):
-            self._printTree(Node(node).l)
-            print(str(Node(node).v) + ' ')
-            self._printTree(Node(node).r)
+            self._printTree(node.l)
+            print(str(node.v) + ' leaf? ' + str(node.isLeaf) + '. predicting : ' + str(node.label))
+            self._printTree(node.r)
+
 
 
 def loadData(fileName, features=[], labels=[]):
@@ -80,7 +89,7 @@ def reduceDuplicates(features, labels, feature):
         if features[row][feature] not in allValues.keys():
             allValues[features[row][feature]] = [0, 0]
 
-        if int(labels[row]) == int(1):
+        if int(float(labels[row])) == int(1):
             allValues[features[row][feature]][1] += 1
         else:
             allValues[features[row][feature]][0] += 1
@@ -94,7 +103,6 @@ def iterate(features=[], labels=[]):
         od = reduceDuplicates(features, labels, i)
         keys = od.keys()
         for split in range(len(keys)-1):
-            #print('split after ' + str(split))
             middle = (keys[split] + keys[split+1])/2
             onesOnLeft = 0
             zerosOnLeft = 0
@@ -146,11 +154,19 @@ def iterate(features=[], labels=[]):
 
        
     possibleSplits.sort()
-    print(possibleSplits)
+    print('split at :' + str(possibleSplits[0]))
     return possibleSplits[0]
 
 def buildTree(root):
-    bestSplit = iterate(root[0], root[1])
+    bestSplit = iterate(root.v[0], root.v[1])
+    
+    for y in range(len(root.v[0])):
+        root.v[0][y].append(float(root.v[1][y]))
+    root.v[0].sort(key  = lambda x: x[bestSplit[2]])
+    
+    for index in range(len(root.v[0])):
+        root.v[1][index] = root.v[0][index][-1]
+        root.v[0][index].pop(-1)
 
     leftChild = []
     rightChild = []
@@ -158,18 +174,21 @@ def buildTree(root):
     foundMiddle = False
     middleIndex= 0
 
-    for i in root[0]:
+    for i in root.v[0]:
         if i[bestSplit[2]] >= bestSplit[1]:
             foundMiddle = True
-            middleIndex = trainingSet.index(i) 
+            middleIndex = root.v[0].index(i) 
         if foundMiddle:
+            print('FOUND MIDDLE!!!!!!!!!!!!!!')
+            print('feature at index ' + str(middleIndex) + ' of value ' + str(i[bestSplit[2]]) + ' is greater than ' + str(bestSplit[1]))
             break
         
-    leftChild = [root[0][0:middleIndex], root[1][0:middleIndex]]
-    rightChild = [root[0][middleIndex:], root[1][middleIndex:]]
+    leftChild = [root.v[0][0:middleIndex], root.v[1][0:middleIndex]]
+    rightChild = [root.v[0][middleIndex:], root.v[1][middleIndex:]]
 
-    Node(root).l = Node(leftChild)
-    Node(root).r = Node(rightChild)
+    root.addLeft(leftChild)
+    root.addRight(rightChild)
+
 
     leftUniform = True
     for leftChildrenLabel in leftChild[1]:
@@ -183,29 +202,46 @@ def buildTree(root):
             rightUniform = False
             break
 
-    # if not leftUniform: 
-    #     #recursive call on left
-    # if not rightUniform:
-    #     #recrusive call on right
-
-    print(leftChild)
-    print(rightChild)
+    # print('left child : ' + str(leftChild))
+    # print('right child : ' + str(rightChild))
+    print('left child size ' + str(len(leftChild[0])))
+    print('right child size ' + str(len(rightChild[0])))
 
 
-# loadData('pa2train.txt', trainingSet, trainingLabels)
+    if leftUniform:
+        root.l.isLeaf = True
+        root.l.label = leftChild[1][0]
+    if rightUniform:
+        root.r.isLeaf = True
+        root.r.label = rightChild[1][0]
+    # print(str(root.l.v) + ' leaf? : ' + str(leftUniform) + '. predicting : ' + str(root.l.label))
+    # print(str(root.r.v) + ' leaf? : ' + str(rightUniform) + '. predicting : ' + str(root.l.label))
+
+    if not leftUniform:
+        print('calculating left child')
+        buildTree(root.l)
+  
+
+    if not rightUniform:
+        print('calculating right child')
+        buildTree(root.r)
+    
+
+
 trainingSet = []
 trainingLabels = []
-loadData('testing.txt', trainingSet, trainingLabels)
+loadData('pa2train.txt', trainingSet, trainingLabels)
+#loadData('testing.txt', trainingSet, trainingLabels)
+#loadData('inifniteLoop.txt', trainingSet, trainingLabels)
+
 
 #create the root 
-yerMam = Tree([trainingSet, trainingLabels])
+yerMam = Tree(Node([trainingSet, trainingLabels]))
 
-root = yerMam.root
+root = yerMam.getRoot()
 buildTree(root)
 print("Hi mom here's the tree")
 yerMam.printTree()
-    
-
 
 
 
