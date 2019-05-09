@@ -8,6 +8,7 @@ class Node:
         self.v = val
         self.isLeaf = False
         self.label = None
+        self.rule = None
     
     def addLeft(self, data):
         self.l = Node(data)
@@ -65,7 +66,7 @@ class Tree:
     def _printTree(self, node):
         if(node != None):
             self._printTree(node.l)
-            print(str(node.v) + ' leaf? ' + str(node.isLeaf) + '. predicting : ' + str(node.label))
+            print(' leaf? ' + str(node.isLeaf) + '. predicting : ' + str(node.label) + ' with ' + str(len(node.v[0])) + ' nodes here')
             self._printTree(node.r)
 
 
@@ -160,6 +161,8 @@ def iterate(features=[], labels=[]):
 def buildTree(root):
     bestSplit = iterate(root.v[0], root.v[1])
     
+    root.rule = bestSplit
+
     for y in range(len(root.v[0])):
         root.v[0][y].append(float(root.v[1][y]))
     root.v[0].sort(key  = lambda x: x[bestSplit[2]])
@@ -179,8 +182,8 @@ def buildTree(root):
             foundMiddle = True
             middleIndex = root.v[0].index(i) 
         if foundMiddle:
-            print('FOUND MIDDLE!!!!!!!!!!!!!!')
-            print('feature at index ' + str(middleIndex) + ' of value ' + str(i[bestSplit[2]]) + ' is greater than ' + str(bestSplit[1]))
+            # print('FOUND MIDDLE!!!!!!!!!!!!!!')
+            # print('feature at index ' + str(middleIndex) + ' of value ' + str(i[bestSplit[2]]) + ' is greater than ' + str(bestSplit[1]))
             break
         
     leftChild = [root.v[0][0:middleIndex], root.v[1][0:middleIndex]]
@@ -218,14 +221,21 @@ def buildTree(root):
     # print(str(root.r.v) + ' leaf? : ' + str(rightUniform) + '. predicting : ' + str(root.l.label))
 
     if not leftUniform:
-        print('calculating left child')
         buildTree(root.l)
   
 
     if not rightUniform:
-        print('calculating right child')
         buildTree(root.r)
     
+def predict(root, x, list):
+    #print('I am a leaf' + str(root.isLeaf) +  '. my rule is ' + str(root.rule) + '. my label is ' + str(root.label))
+
+    if not root.isLeaf:
+        if x[root.rule[2]] < root.rule[1]:
+            predict(root.l, x, list )
+        else : 
+            predict(root.r, x, list)
+    list.append(root.label)
 
 
 trainingSet = []
@@ -234,6 +244,10 @@ loadData('pa2train.txt', trainingSet, trainingLabels)
 #loadData('testing.txt', trainingSet, trainingLabels)
 #loadData('inifniteLoop.txt', trainingSet, trainingLabels)
 
+testingSet = []
+testingLabels= []
+loadData('pa2test.txt', testingSet, testingLabels)
+#testingSet = [1, 0]
 
 #create the root 
 yerMam = Tree(Node([trainingSet, trainingLabels]))
@@ -243,6 +257,16 @@ buildTree(root)
 print("Hi mom here's the tree")
 yerMam.printTree()
 
+print('Hi mom im testing')
+numCorrect = 0
+for x in trainingSet:
+    guessList = []
+    guess = predict(root, trainingSet[0], guessList)
+    if guessList[0] == trainingLabels[trainingSet.index(x)]:
+        numCorrect += 1
+error = float(1000-numCorrect)/float(1000)
+  
+print(error)
 
 
 
