@@ -277,55 +277,16 @@ def getValidationError(root, validationSet, validationLabels):
     error = float(1000-numCorrect)/float(1000) 
     return error
 
-def pruneLeftSubTree(root, validationSet, validationLabels, rootroot):
-    print('left of : ')
-    oldNode = root.l
-    leaves = get_leaf_nodes(root.l)
-    ones = 0
-    zeros = 0
+def pruneLeftSubTree(root, validationSet, validationLabels, rootroot, ogRoot, previousRoot):
+    oldNode = previousRoot.r
 
-    for leaf in leaves:
-        if float(leaf.label) == float(0):
-            zeros += 1
-        else :
-            ones += 1
-    
-    consensus = -1
-    if ones > zeros:
-        consensus = 1.0
+    if root[1] == 'left':
+        print('left of : ')
+        oldNode = previousRoot.l
     else : 
-        consensus = 0.0
+        print('right of : ')
 
-    print('ones : ' + str(ones) + '. zeros : ' + str(zeros))
-    print('consensus: ' + str(consensus))
-    newNode = Node([[],[]])
-    newNode.label = float(consensus)
-    newNode.isLeaf = True
-    print('before : ' + str(root.l.isLeaf))
-
-    root.l = newNode
-    error = getValidationError(rootroot, validationSet, validationLabels)
-    oldError = getValidationError(rootroot, validationSet, validationLabels)
-
-    print('new error ' + str(error))
-    print('old error ' + str(oldError))
-
-    pruned = True
-    if oldError < error:
-        pruned = False
-        root.l = oldNode
-    
-
-    print('after ' + str((root.l.isLeaf)))
-    
-    return pruned
-
-    
-def pruneRightSubTree(root, validationSet, validationLabels, rootroot):
-    print('right of : ')
-
-    oldNode = root.r
-    leaves = get_leaf_nodes(root.r)
+    leaves = get_leaf_nodes(root[0])
     ones = 0
     zeros = 0
 
@@ -347,22 +308,34 @@ def pruneRightSubTree(root, validationSet, validationLabels, rootroot):
     newNode.label = float(consensus)
     newNode.isLeaf = True
 
-    print('before : ' + str(root.r.isLeaf))
-    root.r = newNode
-    error = getValidationError(rootroot, validationSet, validationLabels)
+    if root[1] == 'left':
+        previousRoot.l = newNode
+    else: 
+        previousRoot.r = newNode
+
     oldError = getValidationError(rootroot, validationSet, validationLabels)
+    newError = getValidationError(ogRoot, validationSet, validationLabels)
 
     print('new error ' + str(error))
     print('old error ' + str(oldError))
 
     pruned = True
+
     if oldError < error:
         pruned = False
-        root.r = oldNode
-
-    print('after : ' + str((root.r.isLeaf)))
-
+        if root[1] == 'left':
+            previousRoot.l = oldNode
+        else: 
+            previousRoot.r = oldNode
+    
+    if root[1] == 'left':
+        print('after ' + str((previousRoot.l.isLeaf)))
+    else: 
+        print('after ' + str((previousRoot.r.isLeaf)))
+    
     return pruned
+
+    
 
 trainingLabels = []
 trainingSet = []
@@ -402,7 +375,7 @@ yerMam.printTree()
 
 #FIND ERROR
 print('Hi mom im testing')
-error = getValidationError(root, testingSet, testingLabels)
+error = getValidationError(root, validationSet, validationLabels)
 print('error ' + str(error))
 
 #PRINT FIRST THREE LEVELS
@@ -411,45 +384,39 @@ printFirstThreeLevels(root)
 
 #PRUNING STEP
 q = Queue.Queue()
-q.put(root)
+q.put([root.l, 'left'])
+q.put([root.r, 'right'])
+
+previous = root
 
 #start from the left and rigth in the tree to begin with mate
-for i in range(0, 2):
-    while  not q.empty():
-        currentSubTree = q.get()
-        if currentSubTree.l is not None:
-            q.put(currentSubTree.l)
-        if currentSubTree.r is not None: 
-            q.put(currentSubTree.r)
-        #call the prune function   
-        #prune on left and right sub tree
-        # must first check to see if left subtree is not a leaf (and same for the right subtree)
-        if currentSubTree.l is not None and not currentSubTree.l.isLeaf:
-            print('left subtree attempted pruning')
-            leftIsPruned = pruneLeftSubTree(currentSubTree, validationSet, validationLabels, rootTPrime)
-        
-        if leftIsPruned:
-            rootTPrime = root
-            break
+while  not q.empty():
+    currentSubTree = q.get()
+    if currentSubTree[0].l is not None:
+        q.put([currentSubTree[0].l, 'left'])
+    if currentSubTree[0].r is not None: 
+        q.put([currentSubTree[0].r, 'right'])
 
-        if currentSubTree.r is not None and not currentSubTree.r.isLeaf:
-            print('right subtree attempted pruning')
-            rightIsPruned = pruneRightSubTree(currentSubTree, validationSet, validationLabels, rootTPrime)
+    #call the prune function   
+    #prune on left and right sub tree
+    # must first check to see if left subtree is not a leaf (and same for the right subtree)
+    if currentSubTree[0] is not None and not currentSubTree[0].isLeaf:
+        print(' subtree attempted pruning')
+        leftIsPruned = pruneLeftSubTree(currentSubTree, validationSet, validationLabels, rootTPrime, root, previous)
 
-        if rightIsPruned:
-            rootTPrime = root
-            break
+    print('was pruned : ' + str(leftIsPruned))
+    if leftIsPruned:
+        rootTPrime = root
+        break
 
-        if currentSubTree.l is not None:
-            q.put(currentSubTree.l)
-        if currentSubTree.r is not None: 
-            q.put(currentSubTree.r)
+    previous = currentSubTree[0]
 
-    print('Hi mom im testing : post pruning')
-    tError = getValidationError(root, testingSet, testingLabels)
-    vError = getValidationError(root, validationSet, validationLabels)
-    print('tError ' + str(tError))
-    print('vError ' + str(vError))
+
+print('Hi mom im testing : post pruning')
+tError = getValidationError(rootTPrime, testingSet, testingLabels)
+vError = getValidationError(rootTPrime, validationSet, validationLabels)
+print('tError ' + str(tError))
+print('vError ' + str(vError))
 
 
 
