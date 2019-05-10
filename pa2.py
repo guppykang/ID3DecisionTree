@@ -1,5 +1,6 @@
 import collections
 import math
+import Queue
 
 class Node:
     def __init__(self, val):
@@ -158,8 +159,11 @@ def iterate(features=[], labels=[]):
     print('split at :' + str(possibleSplits[0]))
     return possibleSplits[0]
 
+
+
 def buildTree(root):
     bestSplit = iterate(root.v[0], root.v[1])
+    
     
     root.rule = bestSplit
 
@@ -231,42 +235,189 @@ def predict(root, x, list):
     #print('I am a leaf' + str(root.isLeaf) +  '. my rule is ' + str(root.rule) + '. my label is ' + str(root.label))
 
     if not root.isLeaf:
-        if x[root.rule[2]] < root.rule[1]:
+        if float(x[root.rule[2]]) < float(root.rule[1]):
             predict(root.l, x, list )
         else : 
             predict(root.r, x, list)
     list.append(root.label)
 
+def printFirstThreeLevels(root):
+    print('Root has ' + str(len(root.v[0])) + ' values in it and the splitting rule is ' + str(root.rule))
+    print('Level 1 of nodes:')
+    print('left node has ' + str(len(root.l.v[0])) + ' values in it and the splitting rule is ' + str(root.l.rule) + 'leaf node : ' + str(root.l.isLeaf) + ' label is : ' + str(root.l.label))
+    print('right node has ' + str(len(root.r.v[0])) + ' values in it and the splitting rule is ' + str(root.r.rule) + 'leaf node : ' + str(root.r.isLeaf) + ' label is : ' + str(root.r.label))
+    print('left left node has ' + str(len(root.l.l.v[0])) + ' values in it and the splitting rule is ' + str(root.l.l.rule) + 'leaf node : ' 
+            + str(root.l.l.isLeaf) + ' label is : ' + str(root.l.l.label))
+    print('left right node has ' + str(len(root.l.r.v[0])) + ' values in it and the splitting rule is ' 
+            + str(root.l.r.rule) + 'leaf node : ' + str(root.l.r.isLeaf) + ' label is : ' + str(root.l.r.label))
+    print('right left node has ' + str(len(root.r.l.v[0])) + ' values in it and the splitting rule is ' 
+            + str(root.r.l.rule) + 'leaf node : ' + str(root.r.l.isLeaf) + ' label is : ' + str(root.r.l.label))
+    print('right right node has ' + str(len(root.r.r.v[0])) + ' values in it and the splitting rule is ' 
+            + str(root.r.r.rule) + 'leaf node : ' + str(root.r.r.isLeaf) + ' label is : ' + str(root.r.r.label))
 
-trainingSet = []
+def get_leaf_nodes(root):
+    leaves = []
+    _collect_leaf_nodes(root,leaves)
+    return leaves
+
+def _collect_leaf_nodes(node, leaves):
+    if node is not None:
+        if node.l is None and node.r is None:
+            leaves.append(node)
+        _collect_leaf_nodes(node.l, leaves)
+        _collect_leaf_nodes(node.r, leaves)
+
+def getValidationError(root, validationSet, validationLabels):
+    numCorrect = 0
+    for x in validationSet:
+        guessList = []
+        guess = predict(root, x, guessList)
+        if float(guessList[0]) == float(validationLabels[validationSet.index(x)]):
+            numCorrect += 1
+    error = float(1000-numCorrect)/float(1000) 
+    return error
+    
+def pruneLeftSubTree(root, validationSet, validationLabels):
+    oldNode = root.l
+    leaves = get_leaf_nodes(root.l)
+    ones = 0
+    zeros = 0
+
+    for leaf in leaves:
+        if float(leaf.label) == float(0):
+            zeros += 1
+        else :
+            ones += 1
+    
+    consensus = -1
+    if ones > zeros:
+        consensus = 1.0
+    else : 
+        consensus = 0.0
+
+    print('ones : ' + str(ones) + '. zeros : ' + str(zeros))
+    print('consensus: ' + str(consensus))
+    newNode = Node([[],[]])
+    newNode.label = float(consensus)
+    newNode.isLeaf = True
+
+    root.l = newNode
+    print(root.l.isLeaf)
+    error = getValidationError(root.l, validationSet, validationLabels)
+    oldError = getValidationError(oldNode, validationSet, validationLabels)
+
+    print('new error ' + str(error))
+    print('old error ' + str(oldError))
+
+    if oldError < error:
+        root.l = oldNode
+
+    print(root.l.isLeaf)
+    
+
+
+    
+def pruneRightSubTree(root, validationSet, validationLabels):
+    oldNode = root.r
+    leaves = get_leaf_nodes(root.r)
+    ones = 0
+    zeros = 0
+
+    for leaf in leaves:
+        if float(leaf.label) == float(0):
+            zeros += 1
+        else :
+            ones += 1
+    
+    consensus = -1
+    if ones > zeros:
+        consensus = 1.0
+    else : 
+        consensus = 0.0
+
+    print('ones : ' + str(ones) + '. zeros : ' + str(zeros))
+    print('consensus: ' + str(consensus))
+    newNode = Node([[],[]])
+    newNode.label = float(consensus)
+    newNode.isLeaf = True
+
+    root.r = newNode
+    print(root.r.isLeaf)
+    error = getValidationError(root.r, validationSet, validationLabels)
+    oldError = getValidationError(oldNode, validationSet, validationLabels)
+
+    print('new error ' + str(error))
+    print('old error ' + str(oldError))
+
+    if oldError < error:
+        root.r = oldNode
+
+    print(root.r.isLeaf)
+
+
 trainingLabels = []
+trainingSet = []
+
+#TRAINING DATA
 loadData('pa2train.txt', trainingSet, trainingLabels)
+
 #loadData('testing.txt', trainingSet, trainingLabels)
 #loadData('inifniteLoop.txt', trainingSet, trainingLabels)
 
+#TESTING DATA
 testingSet = []
 testingLabels= []
 loadData('pa2test.txt', testingSet, testingLabels)
-#testingSet = [1, 0]
+#testingSet = [[1, 0]]
+#estingLabels = [1]
+
+#VALIDATION DATA 
+validationSet = []
+validationLabels = []
+loadData('pa2validation.txt', validationSet, validationLabels)
 
 #create the root 
 yerMam = Tree(Node([trainingSet, trainingLabels]))
+#tPrime = Tree(Node([trainingSet, trainingLabels]))
+ 
 
+#BUILD TREE
 root = yerMam.getRoot()
+#rootTPrime = tPrime.getRoot()
+
 buildTree(root)
+#buildTree(rootTPrime)
+
 print("Hi mom here's the tree")
 yerMam.printTree()
 
+#FIND ERROR
 print('Hi mom im testing')
-numCorrect = 0
-for x in trainingSet:
-    guessList = []
-    guess = predict(root, trainingSet[0], guessList)
-    if guessList[0] == trainingLabels[trainingSet.index(x)]:
-        numCorrect += 1
-error = float(1000-numCorrect)/float(1000)
-  
-print(error)
+error = getValidationError(root, testingSet, testingLabels)
+print('error ' + str(error))
 
+#PRINT FIRST THREE LEVELS
+#printFirstThreeLevels(root)
 
+pruneLeftSubTree(root, validationSet, validationLabels)
 
+# #PRUNING STEP
+# q = Queue.Queue()
+# q.put(rootTPrime)
+
+# while  not q.empty():
+#     currentSubTree = q.get()
+#     #call the prune function   
+#     #prune on left and right sub tree
+#     # must first check to see if left subtree is not a leaf (and same for the right subtree)
+#     if currentSubTree.l is not None and not currentSubTree.l.isLeaf:
+#         oldLeftSubtree = currentSubTree.l
+#         pruneLeftSubTree(currentSubTree)
+#     if currentSubTree.r is not None and not currentSubTree.r.isLeaf:
+#         pruneRightSubTree(currentSubTree.r)
+
+#     if currentSubTree.l is not None:
+#         q.put(currentSubTree.l)
+#     if currentSubTree.r is not None: 
+#         q.put(currentSubTree.r)
+    
