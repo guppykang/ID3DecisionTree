@@ -277,7 +277,7 @@ def getValidationError(root, validationSet, validationLabels):
     error = float(1000-numCorrect)/float(1000) 
     return error
 
-def pruneLeftSubTree(root, validationSet, validationLabels):
+def pruneLeftSubTree(root, validationSet, validationLabels, rootRoot):
 
     leaves = get_leaf_nodes(root)
     ones = 0
@@ -297,24 +297,43 @@ def pruneLeftSubTree(root, validationSet, validationLabels):
 
     print('ones : ' + str(ones) + '. zeros : ' + str(zeros))
     print('consensus: ' + str(consensus))
-    newNode = Node([[],[]])
-    newNode.label = float(consensus)
-    newNode.isLeaf = True
+    # newNode = Node([[],[]])
+    # newNode.label = float(consensus)
+    # newNode.isLeaf = True
 
-    newError = getValidationError(newNode, validationSet, validationLabels)
-    oldError = getValidationError(root, validationSet, validationLabels)
+    oldError = getValidationError(rootRoot, validationSet, validationLabels)
+
+    oldLabel = root.label
+    oldl = root.l
+    oldr = root.r
+    oldIsLeaf = root.isLeaf
+    oldRule = root.rule
+    oldV = root.v
+
+
+    root.label = float(consensus)
+    root.l = None
+    root.r = None
+    root.isLeaf = True
+
+
+    newError = getValidationError(rootRoot, validationSet, validationLabels)
 
     print('new error ' + str(newError))
     print('old error ' + str(oldError))
 
-    pruned = False
+    pruned = True
 
-    if newError < oldError:
-        pruned = True
-        root.label = float(consensus)
-        root.l = None
-        root.r = None
-        root.isLeaf = True
+    if newError >= oldError:
+        pruned = False
+        root.l = oldl
+        root.r = oldr 
+        root.isLeaf = oldIsLeaf
+        root.rule = oldRule
+        root.v = oldV
+        root.label = oldLabel
+
+        
         
     return pruned
 
@@ -386,7 +405,7 @@ for i in range(0,2):
         # must first check to see if left subtree is not a leaf (and same for the right subtree)
         if currentSubTree is not None and not currentSubTree.isLeaf:
             print(' subtree attempted pruning')
-            leftIsPruned = pruneLeftSubTree(currentSubTree, validationSet, validationLabels)
+            leftIsPruned = pruneLeftSubTree(currentSubTree, validationSet, validationLabels, root)
 
         print('was pruned : ' + str(leftIsPruned))
         if currentSubTree.l is not None:
