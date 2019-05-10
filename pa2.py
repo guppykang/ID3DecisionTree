@@ -335,7 +335,18 @@ def pruneLeftSubTree(root, validationSet, validationLabels, rootroot, ogRoot, pr
     
     return pruned
 
-    
+def fullCopy(root):
+    if root is None:
+        return root
+    temp = Node([[],[]])
+    temp.isLeaf = root.isLeaf
+    temp.label = root.label
+    temp.l = root.l
+    temp.r = root.r
+    temp.rule = root.rule
+    temp.v = root.v
+    return temp
+
 
 trainingLabels = []
 trainingSet = []
@@ -389,35 +400,44 @@ q.put([root.r, 'right'])
 
 previous = root
 
-#start from the left and rigth in the tree to begin with mate
-while  not q.empty():
-    currentSubTree = q.get()
-    if currentSubTree[0].l is not None:
-        q.put([currentSubTree[0].l, 'left'])
-    if currentSubTree[0].r is not None: 
-        q.put([currentSubTree[0].r, 'right'])
 
-    #call the prune function   
-    #prune on left and right sub tree
-    # must first check to see if left subtree is not a leaf (and same for the right subtree)
-    if currentSubTree[0] is not None and not currentSubTree[0].isLeaf:
-        print(' subtree attempted pruning')
-        leftIsPruned = pruneLeftSubTree(currentSubTree, validationSet, validationLabels, rootTPrime, root, previous)
+for i in range(0,1):
+    #start from the left and rigth in the tree to begin with mate
+    print('rule: ' + str((previous.rule)))
+    while  not q.empty():
+        currentSubTree = q.get()
+        if currentSubTree[0].l is not None:
+            q.put([currentSubTree[0].l, 'left'])
+        if currentSubTree[0].r is not None: 
+            q.put([currentSubTree[0].r, 'right'])
 
-    print('was pruned : ' + str(leftIsPruned))
-    if leftIsPruned:
+        #call the prune function   
+        #prune on left and right sub tree
+        # must first check to see if left subtree is not a leaf (and same for the right subtree)
+        if currentSubTree[0] is not None and not currentSubTree[0].isLeaf:
+            print(' subtree attempted pruning')
+            leftIsPruned = pruneLeftSubTree(currentSubTree, validationSet, validationLabels, rootTPrime, root, previous)
+
+        print('was pruned : ' + str(leftIsPruned))
         rootTPrime = root
-        break
 
-    previous = currentSubTree[0]
+        if leftIsPruned:
+            break
+
+        #this is problem here
+        previous = currentSubTree[0]
 
 
-print('Hi mom im testing : post pruning')
-tError = getValidationError(rootTPrime, testingSet, testingLabels)
-vError = getValidationError(rootTPrime, validationSet, validationLabels)
-print('tError ' + str(tError))
-print('vError ' + str(vError))
+    print('Hi mom im testing : post pruning')
+    tError = getValidationError(rootTPrime, testingSet, testingLabels)
+    vError = getValidationError(rootTPrime, validationSet, validationLabels)
+    print('tError ' + str(tError))
+    print('vError ' + str(vError))
+    rootTPrime = fullCopy(rootTPrime)
+    root = fullCopy(rootTPrime)
 
+print(root.l.isLeaf)
+    
 
 
 
